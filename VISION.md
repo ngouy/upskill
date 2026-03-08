@@ -467,6 +467,8 @@ Checks each skill file for:
 - Is the trigger condition too broad? (e.g., "whenever I'm writing code" — fires constantly)
 - Does this skill duplicate another installed skill?
 
+> **Future consideration (not v1):** Deep scan mode — opt-in analysis of referenced script files (`.sh`, etc.) in addition to SKILL.md. Deferred because loading every script file in every plugin could be token-prohibitive. When designed, should be a separate flag (e.g. `--deep`) that the user explicitly requests, not part of default doctor behavior.
+
 **3. Guard Rail Recommendations**
 
 Identifies dangerous actions within the skill's scope and suggests guard rails — not removal. Examples:
@@ -798,6 +800,9 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
   "nudgeConfig": {
     "intervalSessions": 10,
     "enabled": true
+  },
+  "watermark": {
+    "enabled": true
   }
 }
 ```
@@ -812,6 +817,7 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
 | `installedPlugins` | object | Keyed by `author/plugin-name`, tracks version state |
 | `nudgeConfig.intervalSessions` | number | How many sessions between update nudges (default: 10) |
 | `nudgeConfig.enabled` | boolean | User can disable nudges entirely |
+| `watermark.enabled` | boolean | Whether to add upskill attribution to managed skills and published READMEs (default: true) |
 
 ### State File Rules
 
@@ -908,7 +914,26 @@ Every skill in `upskill` must pass `doctor --curator` with zero CRITICAL or HIGH
 
 Corollary: the first time `doctor` is complete, the immediate next step is running it on all four `upskill` skills.
 
-### 7. Scope Boundaries Are Sacred
+### 7. Attribution by Default, Removable by Choice
+
+Skills managed or published by upskill carry optional attribution in two places:
+
+1. **SKILL.md frontmatter** — a `maintained-with` field:
+   ```yaml
+   maintained-with: upskill (github.com/ngouy/upskill)
+   ```
+
+2. **README footer** — for published plugins, a small attribution line:
+   ```
+   ---
+   *Managed with [upskill](https://github.com/ngouy/upskill)*
+   ```
+
+Both are controlled by a single `watermark.enabled` toggle in `upskill-state.json` (default: `true`). When set to `false`, neither is added to new skills, and the user can ask manager to strip existing watermarks from their skills.
+
+The watermark is never added to third-party skills — only to skills the user owns and manages through upskill.
+
+### 8. Scope Boundaries Are Sacred
 
 | Sub-skill | Analyzes | Does NOT analyze |
 |---|---|---|

@@ -454,3 +454,7 @@ Open issues at [github.com/ngouy/upskill/issues](https://github.com/ngouy/upskil
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
+
+---
+
+*Managed with [upskill](https://github.com/ngouy/upskill)*
