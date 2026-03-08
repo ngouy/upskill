@@ -77,8 +77,8 @@ No lifecycle          Full lifecycle
 `upskill` and skill-creator are natural partners. A recommended workflow:
 
 ```
-/skill-creator   →   publisher   →   doctor   →   manager
-(create it)          (ship it)        (quality check)       (maintain it)
+skill-creator  →  publisher  →  doctor  →  manager
+ (create it)       (ship it)    (improve it)  (maintain it)
 ```
 
 ---
@@ -145,12 +145,14 @@ upskill/
 
 ### Available Skills After Installation
 
-| Skill | Invocation | Purpose |
-|---|---|---|
-| Inventory manager | `manager` | List, install, update, remove skills |
-| Publisher pipeline | `publisher` | Scaffold, version, and ship skills to GitHub |
-| Quality & security doctor | `doctor` | Analyze skills for quality and safety |
-| Session auditor | `auditor` | Snapshot audit of loaded skills and session health |
+| Skill | Purpose |
+|---|---|
+| `manager` | List, install, update, and remove skills — unified inventory |
+| `publisher` | Scaffold, version, and ship skills to GitHub |
+| `doctor` | Analyze skills for quality, safety, and bad patterns |
+| `auditor` | Point-in-time session snapshot through the lens of loaded skills |
+
+Skills are model-invoked — Claude activates them automatically when the context matches, or when you explicitly ask for them (e.g. "run doctor on my-skill").
 
 ### State File
 
@@ -254,17 +256,15 @@ Implementation note: The nudge fires at session start if `sessionsUntilNextNudge
 - Never remove without explicit confirmation
 - Never surface security findings (that's doctor and auditor's job — manager just inventories)
 
-#### Invocation Patterns
+#### When to Use
 
-```
-manager               # show full inventory
-manager list          # same as above
-manager install <src> # install a plugin
-manager remove <name> # remove a plugin
-manager update        # update all plugins
-manager update <name> # update one plugin
-manager check-updates # check for updates without installing
-```
+The implementer should write the SKILL.md `description` frontmatter to cover these situations:
+
+- User wants to see what skills or plugins are installed
+- User wants to install, remove, or update a skill or plugin
+- User asks what's loaded, what version something is, or what's available
+- User asks if any skills need updating
+- Periodic session-start nudge when updates are available (the only proactive trigger)
 
 ---
 
@@ -310,15 +310,17 @@ my-plugin/
   "name": "my-plugin",
   "version": "1.0.0",
   "description": "...",
-  "author": "...",
-  "skills": [
-    {
-      "name": "my-skill",
-      "path": "skills/my-skill/SKILL.md"
-    }
-  ]
+  "author": {
+    "name": "..."
+  },
+  "homepage": "https://github.com/username/my-plugin",
+  "repository": "https://github.com/username/my-plugin",
+  "license": "MIT",
+  "keywords": []
 }
 ```
+
+Skills are auto-discovered from the `skills/` directory — no `skills` array needed in `plugin.json`.
 
 Publisher prompts the user for missing fields (name, description, author) rather than guessing.
 
@@ -408,19 +410,17 @@ Publisher can enter this pipeline at any stage.
 - Never skip the README/release notes prompting — incomplete docs are a known failure mode
 - Never auto-merge or auto-release without confirmation at each step
 
-#### Invocation Patterns
+#### When to Use
 
-```
-publisher                          # interactive wizard — detects state and guides
-publisher scaffold <path|name>     # scaffold a raw skill into plugin structure
-publisher git-init [path]          # initialize git repo
-publisher github-setup             # create GitHub repo and push
-publisher bump [major|minor|patch] # bump version
-publisher release                  # tag and create GitHub release
-publisher status                   # show current state in the scaffold→release pipeline
-```
+The implementer should write the SKILL.md `description` frontmatter to cover these situations:
 
-Default invocation (`publisher` with no args) runs an interactive wizard that detects the current state of the skill/plugin and guides the user through the next logical step.
+- User has just created a skill (especially right after skill-creator) and wants to share or version it
+- User wants to put a skill on GitHub or make it installable by others
+- User wants to release a new version of an existing plugin
+- User wants to add proper structure, docs, or semver to a raw skill file
+- User asks how to share a skill with their team or the community
+
+Default behavior (no specific sub-task stated) should run the interactive wizard — detect the current pipeline state and guide the user to the next logical step.
 
 ---
 
@@ -612,17 +612,17 @@ Guardian-specific severity levels:
 - Never block the user from using a skill — recommendations only
 - Never make security judgments about what bash commands *do* at runtime — only about patterns in the skill *instructions* themselves
 
-#### Invocation Patterns
+#### When to Use
 
-```
-doctor                         # analyze all your local skills
-doctor <skill-name>            # analyze one skill (auto-detects mode)
-doctor <skill-name> --curator  # force curator mode
-doctor <skill-name> --guardian # force guardian mode
-doctor --all                   # analyze all installed skills (guardian for third-party)
-doctor --plugins               # analyze all installed plugins (guardian mode)
-doctor --conflicts             # check for cross-skill conflicts only
-```
+The implementer should write the SKILL.md `description` frontmatter to cover these situations:
+
+- User wants to review, improve, or check the quality of a skill
+- User asks if a skill is safe, well-written, or has issues
+- User wants to split a skill into more focused sub-skills
+- User suspects a skill is causing problems, conflicts, or unexpected behavior
+- User wants to audit a third-party or newly installed skill for security concerns
+- User asks about bad practices, guard rails, or missing elements in a skill
+- User wants to know if a skill contradicts their CLAUDE.md or another skill
 
 ---
 
@@ -765,15 +765,15 @@ Overall ratings:
 - Never make security judgments about what bash commands *do at runtime* — only about patterns in skill instructions
 - Never claim certainty about token counts — always label estimates as approximate
 
-#### Invocation Patterns
+#### When to Use
 
-```
-auditor              # full session audit (all four sections)
-auditor --tokens     # section 1 only: token footprint
-auditor --checks     # sections 2 + 3: hard and soft checks only
-auditor --summary    # section 4 only: health summary
-auditor --security   # security-focused: hard checks + any red/suspicious findings
-```
+The implementer should write the SKILL.md `description` frontmatter to cover these situations:
+
+- User wants to understand what skills are loaded and their token cost
+- User suspects loaded skills are degrading session quality or consuming too much context
+- User wants a health check or overview of their current skill setup
+- User asks what's conflicting, suspicious, or problematic in the current session
+- User asks for a session audit, skill snapshot, or "what's loaded right now"
 
 ---
 
@@ -942,7 +942,7 @@ Before any `upskill` skill is considered complete:
 - [ ] Clear purpose statement in the first 2 sentences
 - [ ] Defined trigger conditions (or explicit note that it's manual-only)
 - [ ] Defined exit/completion signal
-- [ ] All invocation patterns documented with examples
+- [ ] "When to Use" section present with clear trigger signals for implementers
 - [ ] Output formats shown as examples (not just described)
 - [ ] "Must never do" list present
 - [ ] Token footprint within budget
@@ -977,34 +977,18 @@ Before any version tag is created:
 {
   "name": "upskill",
   "version": "1.0.0",
-  "description": "The full lifecycle layer for Claude Code skills. Manage, publish, audit, and quality-check your skills.",
-  "author": "ngouy",
+  "description": "The full lifecycle layer for Claude Code skills. Manage, publish, doctor, and audit your skills.",
+  "author": {
+    "name": "ngouy"
+  },
   "homepage": "https://github.com/ngouy/upskill",
+  "repository": "https://github.com/ngouy/upskill",
   "license": "MIT",
-  "skills": [
-    {
-      "name": "manager",
-      "path": "skills/manager/SKILL.md",
-      "description": "Unified inventory for all installed skills. List, install, update, and remove."
-    },
-    {
-      "name": "publisher",
-      "path": "skills/publisher/SKILL.md",
-      "description": "Publish a local skill as an installable plugin. Scaffold, git init, GitHub setup, versioning."
-    },
-    {
-      "name": "doctor",
-      "path": "skills/doctor/SKILL.md",
-      "description": "Analyze skills for quality, structure, and security. Curator and Guardian modes."
-    },
-    {
-      "name": "auditor",
-      "path": "skills/auditor/SKILL.md",
-      "description": "Snapshot audit of your current session through the lens of loaded skills."
-    }
-  ]
+  "keywords": ["skills", "plugin-management", "versioning", "security", "lifecycle"]
 }
 ```
+
+Note: skills are auto-discovered by the plugin system from the `skills/` directory. No `skills` array is needed or supported in `plugin.json`.
 
 ### `README.md` Structure (Required Sections)
 
@@ -1055,7 +1039,7 @@ Do not skip steps. Do not combine steps into one session.
 
 1. The capability set in the relevant section of this document is the specification — implement everything listed, nothing more
 2. The "must never do" list is a hard constraint — violations are bugs, not style issues
-3. The invocation patterns define the exact invocations — do not add undocumented invocations without updating this document
+3. The "When to Use" section defines the trigger intent — write the SKILL.md `description` frontmatter to match it precisely
 4. Output format examples are the contract — your output must match the structure
 5. The token budget for each sub-skill is a target — verify with a character count and flag if you cannot meet it
 
