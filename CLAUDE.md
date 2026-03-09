@@ -11,16 +11,23 @@ The north star document is `VISION.md`. Read it before implementing anything.
 
 ## Build Roadmap
 
+**v1 focuses on the two highest-value skills: publisher and doctor.** Manager and auditor are deferred to v1.1+.
+
 Sessions must happen in this order. Do not start a session without completing the previous one.
 
 | Session | Task | GitHub Issue | Status |
 |---|---|---|---|
 | 1 | Plugin scaffold — create `plugin.json`, empty `skills/` dirs, `.gitignore` | — | 🔲 todo |
-| 2 | `manager` sub-skill | [#1](https://github.com/ngouy/upskill/issues/1) | 🔲 todo |
-| 3 | `publisher` sub-skill | [#2](https://github.com/ngouy/upskill/issues/2) | 🔲 todo |
-| 4 | `doctor` sub-skill | [#3](https://github.com/ngouy/upskill/issues/3) | 🔲 todo |
-| 5 | `auditor` sub-skill | [#4](https://github.com/ngouy/upskill/issues/4) | 🔲 todo |
-| 6 | Final pass — README update, run doctor on all skills, tag v1.0.0 | — | 🔲 todo |
+| 2 | `publisher` sub-skill | [#2](https://github.com/ngouy/upskill/issues/2) | 🔲 todo |
+| 3 | `doctor` sub-skill | [#3](https://github.com/ngouy/upskill/issues/3) | 🔲 todo |
+| 4 | Final pass — README update, run doctor on all skills, tag v1.0.0 | — | 🔲 todo |
+
+**Deferred to v1.1+:**
+
+| Task | GitHub Issue | Notes |
+|---|---|---|
+| `manager` sub-skill | [#1](https://github.com/ngouy/upskill/issues/1) | Unified inventory, bulk updates, update hook |
+| `auditor` sub-skill | [#4](https://github.com/ngouy/upskill/issues/4) | Cross-skill analysis, conflicts, token budget |
 
 **When starting a session:** read the linked GitHub issue in full before writing a single line. The issue is the brief. VISION.md is the law.
 

@@ -67,9 +67,14 @@ The Claude Code skill ecosystem today has a clean 0→1 story (skill-creator) an
 
 A **plugin** is a package — a repository with `.claude-plugin/plugin.json` that can be installed via `/plugin install`. A **skill** is a single SKILL.md file inside a plugin's `skills/` directory. One plugin can contain many skills (e.g., `upskill` is one plugin containing four skills).
 
-Users can also have **standalone local skills** — raw `.md` files placed directly in `~/.claude/skills/` or a project's `.claude/skills/`. These are not part of any plugin. They have no version, no metadata, no update path, and no install/uninstall mechanism.
+Users can also have **standalone local skills** — raw `.md` files not part of any plugin. These live in two places:
 
-This distinction matters because `/plugin list` shows plugins, but there is no built-in way to see "every skill loaded in this session, regardless of source." `upskill` bridges this gap.
+- **Global skills** — `~/.claude/skills/` — personal skills available in every session
+- **Project skills** — `<project>/.claude/skills/` — team skills shared via the repo, available to everyone who clones it
+
+Project-level skills are a primary use case for `upskill`. Teams write skills in their repos (deploy helpers, review checklists, coding standards) and every team member gets them automatically. These skills are the most likely to be written quickly and never curated — which is exactly what `doctor` is for.
+
+All three skill sources (plugin-installed, global local, project-level) are first-class citizens across all `upskill` sub-skills. `/plugin list` only shows plugins — `upskill` shows everything.
 
 ### Relationship to skill-creator
 
@@ -182,7 +187,7 @@ Each sub-skill section below is written to serve as the primary reference for th
 
 `manager` provides a single, unified view of every skill loaded into the current Claude Code environment — regardless of whether it came from a plugin or was created locally.
 
-There is no built-in way to see all skills from all sources in one place. `/plugin list` shows plugins but not standalone local skills. `manager` merges both into one inventory. The bifurcation between plugin-installed skills and local custom skills is an implementation detail — from the user's perspective, there is one list.
+There is no built-in way to see all skills from all sources in one place. `/plugin list` shows plugins but not global or project-level skills. `manager` merges all three sources into one inventory. The differences between plugin-installed, global, and project-level skills are implementation details — from the user's perspective, there is one list.
 
 #### Capability Set
 
@@ -209,8 +214,8 @@ Displays all installed skills with rich metadata:
 
 Metadata shown per skill:
 - Skill name and namespace
-- Source: `plugin` (managed by Claude Code) or `local` (raw markdown in `~/.claude/skills/`)
-- Version: semver for plugins, `(untracked)` for local files with no git history, or git short SHA if in a git repo
+- Source: `plugin` (managed by Claude Code), `local` (global skills in `~/.claude/skills/`), or `project` (project skills in `<project>/.claude/skills/`)
+- Version: semver for plugins, `(untracked)` for local/project files with no git history, or git short SHA if in a git repo
 - Last updated: human-readable relative time
 - Update available badge (when detected)
 
@@ -394,6 +399,16 @@ raw .md file
 
 Publisher can enter this pipeline at any stage.
 
+**8. Project-Level Skill Management**
+
+For skills that live in a project's `.claude/skills/` directory, publisher operates differently — these skills already live inside a repo, so the workflow is about managing them in-place rather than creating standalone plugins:
+
+- **Version tracking:** Publisher adds lightweight semver metadata to the skill's frontmatter (no separate `plugin.json` needed for project skills)
+- **PR workflow:** When a project skill is updated, publisher creates a PR on the project repo with the changes rather than pushing to a standalone plugin repo
+- **Watermark:** If opt-in, adds `maintained-with` to the skill's frontmatter
+
+Project-level skills are the primary use case for teams — deploy helpers, review checklists, coding standards. Publisher treats them as first-class, not as second-class citizens that need to be "promoted" to plugins.
+
 #### What publisher Must Never Do
 
 - Never overwrite existing SKILL.md content
@@ -409,6 +424,7 @@ The implementer should write the SKILL.md `description` frontmatter to cover the
 - User has just created a skill (especially right after skill-creator) and wants to share or version it
 - User wants to put a skill on GitHub or make it installable by others
 - User wants to release a new version of an existing plugin
+- User wants to manage or version a project-level skill (`.claude/skills/`)
 - User wants to add proper structure, docs, or semver to a raw skill file
 - User asks how to share a skill with their team or the community
 
@@ -803,7 +819,7 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
 | `installedPlugins` | object | Keyed by `author/plugin-name`, tracks version state |
 | `nudgeConfig.intervalSessions` | number | How many sessions between update checks (default: 10, used by the hook) |
 | `nudgeConfig.enabled` | boolean | User can disable nudges entirely |
-| `watermark.enabled` | boolean | Whether to add upskill attribution to managed skills and published READMEs (default: true) |
+| `watermark.enabled` | boolean | Whether to add upskill attribution to managed skills and published READMEs (default: false, opt-in) |
 
 ### State File Rules
 
@@ -818,30 +834,31 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
 
 ### The Lazy Loader / Skill Suggester (Post-v1)
 
-**This feature is NOT in v1 but MUST be in the long-term vision.**
+**This feature is NOT in v1. It is an experimental idea for future exploration.**
 
-The Lazy Loader is a lightweight always-loaded skill (~100 tokens maximum) that acts as a proactive discovery layer. It:
+The core concept: a lightweight router skill that detects what domain the user is working in and dynamically loads relevant sub-skills. Instead of loading all skills upfront, only load what's needed.
 
-1. **Stays resident** — loaded in every Claude Code session, but at minimal token cost
-2. **Recognizes patterns** — watches for keywords, task descriptions, and workflow signals that suggest a non-installed skill would be useful
-3. **Suggests contextually** — when it detects a match, surfaces a brief recommendation:
-   ```
-   [upskill] This looks like a PR review task. You have commit installed
-   but not pr-reviewer. Install it? manager install github:author/pr-reviewer
-   ```
-4. **Loads on confirmation** — if the user confirms, loads the heavier skill for the actual work
-5. **Learns over time** — tracks which suggestions were accepted and which were dismissed (stored in `upskill-state.json`)
+**The idea (cascading loader):**
 
-**Why this is v2 and not v1:**
+1. A small router skill (~100 tokens) is always loaded
+2. It analyzes the session context to determine the domain (skill management, code review, deployment, etc.)
+3. Based on the domain, it instructs Claude to read a category-specific skill file
+4. Each category file contains curated references to specific skills in that domain
 
-The Lazy Loader requires a curated signal library (which patterns map to which skills) and a community-driven registry of quality skills to recommend. Neither exists yet. Building the core lifecycle tooling (manager, publisher, doctor, auditor) first creates the ecosystem that makes Lazy Loader valuable.
+**Known technical constraints:**
 
-**Design constraints for when it's built:**
+- **Skills are passive text, not code.** A skill cannot trigger itself or "watch" for patterns. It relies on Claude recognizing the match between its description and the user's context.
+- **Dynamically loaded skills don't survive context compression.** Skills loaded via file reads mid-session may be dropped when the context window compresses. Only properly installed skills are re-injected after compression.
+- **A registry is needed for ecosystem-wide suggestions.** Suggesting skills the user doesn't have requires knowing what skills exist. A curated catalog is a separate project.
+- **The 100-token budget is tight.** The router would need to categorize into domains, and even a small set of categories with trigger patterns approaches the limit.
 
-- The resident skill must be 100 tokens or less — verified by auditor before release
-- Suggestions must be skippable with a single keystroke — no friction
-- Must be opt-out, not opt-in
-- Must never suggest skills it hasn't vetted through guardian mode
+**Simpler alternatives worth exploring first:**
+
+- Suggest skills the user already has installed but hasn't triggered
+- Suggest project-level skills to teammates who haven't used them yet
+- A small, hand-curated "starter pack" list of well-known community plugins, updated with each upskill release
+
+**Why this is post-v1:** The core lifecycle tooling (publisher, doctor) must exist first. The Lazy Loader's value depends on an ecosystem of quality skills worth suggesting — which is what v1 builds toward.
 
 ### Other Post-v1 Possibilities
 
@@ -902,9 +919,9 @@ Every skill in `upskill` must pass `doctor --curator` with zero CRITICAL or HIGH
 
 Corollary: the first time `doctor` is complete, the immediate next step is running it on all four `upskill` skills.
 
-### 7. Attribution by Default, Removable by Choice
+### 7. Attribution is Opt-In
 
-Skills managed or published by upskill carry optional attribution in two places:
+Skills managed or published by upskill can optionally carry attribution in two places:
 
 1. **SKILL.md frontmatter** — a `maintained-with` field:
    ```yaml
@@ -917,7 +934,7 @@ Skills managed or published by upskill carry optional attribution in two places:
    *Managed with [upskill](https://github.com/ngouy/upskill)*
    ```
 
-Both are controlled by a single `watermark.enabled` toggle in `upskill-state.json` (default: `true`). When set to `false`, neither is added to new skills, and the user can ask manager to strip existing watermarks from their skills.
+Attribution is **opt-in**. During `publisher scaffold`, the user is asked: "Add upskill attribution? [y/N]". The answer is stored in `watermark.enabled` in `upskill-state.json` (default: `false`). Attribution is never added silently — consistent with Principle 4 (Suggest, Don't Force).
 
 The watermark is never added to third-party skills — only to skills the user owns and manages through upskill.
 
@@ -925,10 +942,10 @@ The watermark is never added to third-party skills — only to skills the user o
 
 | Sub-skill | Analyzes | Does NOT analyze |
 |---|---|---|
-| manager | Installed plugins, version metadata | Skill content, session behavior |
-| publisher | Plugin structure, git/GitHub state | Skill quality, session impact |
-| doctor | Skill file content, structure, safety | Session state, code, conversation |
-| auditor | Loaded skills + their session impact | Conversation, code, project files |
+| manager | Unified skill inventory (plugins + local + project), bulk updates, update notifications | Skill content, per-skill quality, security analysis |
+| publisher | Plugin structure, git/GitHub state, project skill PRs | Skill quality, session impact |
+| doctor | Individual skill quality, structure, safety (curator + guardian) | Cross-skill analysis, session state, code, conversation |
+| auditor | Cross-skill analysis: conflicts, overlaps, token budget | Per-skill quality (use doctor), conversation, code, project files |
 
 No sub-skill crosses into another's domain. If a feature would require crossing a boundary, it either belongs in a different sub-skill or requires a new sub-skill.
 
@@ -1059,6 +1076,10 @@ Do not skip steps. Do not combine steps into one session.
 ### Resolving Ambiguity
 
 If a specification is ambiguous, resolve it conservatively: the interpretation that does less, exposes less, is safer. Document your interpretation as a comment in the SKILL.md file and flag it for review.
+
+### When VISION.md Is Wrong
+
+If implementation reveals that a feature as specified is technically infeasible or contradicts another principle, do not silently skip it or hack around it. Instead: document the conflict, propose an alternative, and flag it for review. The implementer is expected to update VISION.md when the spec is demonstrably wrong — that is not "unilateral modification," it is a necessary correction. What is prohibited is adding new features or changing scope without discussion.
 
 ### Scope Creep
 
