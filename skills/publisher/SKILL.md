@@ -8,7 +8,7 @@ Publisher takes a skill in any state and handles the full publication pipeline: 
 
 ## Prerequisites
 
-Run `gh auth status`. If it fails, stop: "Publisher requires `gh` CLI authenticated — run `gh auth login`." Get the user's GitHub username: `gh api user --jq .login`.
+Run `gh auth status` — stop if it fails. Get GitHub username: `gh api user --jq .login`.
 
 ## Detect State
 
@@ -16,14 +16,14 @@ If triggered immediately after skill-creator, skip detection and go directly to 
 
 Check in order. Stop at the first "no" — you're at the stage from the previous row. If check 2 fails: raw.
 
-| # | Check | Stage achieved |
-|---|-------|---------------|
-| 1 | Path inside `<project>/.claude/skills/`? | project-level mode (see below) |
-| 2 | `.claude-plugin/plugin.json` exists? | scaffolded |
-| 3 | `git rev-parse --git-dir` succeeds with commits? | git-tracked |
-| 4 | `gh repo view <owner>/<name>` succeeds? | github-hosted |
-| 5 | `git tag --list 'v*'` returns semver tags? | versioned |
-| 6 | `gh release list --limit 1` returns results? | released |
+| Check | Stage achieved |
+|-------|---------------|
+| Path inside `<project>/.claude/skills/`? | project-level mode (see below) |
+| `.claude-plugin/plugin.json` exists? | scaffolded |
+| `git rev-parse --git-dir` succeeds with commits? | git-tracked |
+| `gh repo view <owner>/<name>` succeeds? | github-hosted |
+| `git tag --list 'v*'` returns semver tags? | versioned |
+| `gh release list --limit 1` returns results? | released |
 
 Show detected state. Route by the user's stated intent. If ambiguous, ask: "What would you like to do?"
 
