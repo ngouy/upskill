@@ -1,0 +1,12 @@
+{
+  "name": "upskill",
+  "version": "0.1.0-alpha",
+  "description": "The full lifecycle layer for Claude Code skills. Publish, doctor, and audit your skills.",
+  "author": {
+    "name": "ngouy"
+  },
+  "homepage": "https://github.com/ngouy/upskill",
+  "repository": "https://github.com/ngouy/upskill",
+  "license": "MIT",
+  "keywords": ["skills", "plugin-management", "versioning", "security", "lifecycle"]
+}
