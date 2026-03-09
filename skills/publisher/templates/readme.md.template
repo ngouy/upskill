@@ -1,0 +1,27 @@
+# {{PLUGIN_NAME}}
+
+{{PLUGIN_DESCRIPTION}}
+
+## Installation
+
+```
+/plugin install github:{{GITHUB_OWNER}}/{{PLUGIN_NAME}}
+```
+
+## Skills
+
+| Skill | Description |
+|-------|-------------|
+{{SKILLS_TABLE}}
+
+## Usage
+
+{{USAGE_EXAMPLES}}
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+## License
+
+[MIT](LICENSE)
