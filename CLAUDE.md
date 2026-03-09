@@ -47,12 +47,13 @@ upskill/
 ├── .claude-plugin/
 │   └── plugin.json          # Plugin metadata — minimal, no skills array
 ├── skills/
-│   ├── manager/SKILL.md
+│   ├── skill-publisher-wizard/SKILL.md    # First-publish wizard (scaffold → git → GitHub)
+│   ├── skill-publisher-release/SKILL.md   # Ongoing release cycle (bump → PR → tag → release)
+│   ├── skill-publisher-marketplace/SKILL.md # Marketplace registry management
 │   ├── publisher/
-│   │   ├── SKILL.md
-│   │   └── templates/       # Scaffold templates — read on demand, not loaded every session
+│   │   └── templates/       # Shared scaffold templates — read on demand, not loaded every session
 │   ├── doctor/SKILL.md
-│   └── auditor/SKILL.md
+│   └── manager/SKILL.md
 ├── CLAUDE.md                # This file
 ├── VISION.md                # North star — read before doing anything
 ├── README.md
