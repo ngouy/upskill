@@ -774,6 +774,7 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
 ```json
 {
   "version": "1",
+  "sessionsUntilNextNudge": 10,
   "lastUpdateCheck": "2026-01-15T10:30:00Z",
   "installedPlugins": {
     "ngouy/upskill": {
@@ -797,6 +798,7 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
 | Field | Type | Description |
 |---|---|---|
 | `version` | string | Schema version for migration support |
+| `sessionsUntilNextNudge` | number | Decremented by the hook each session; update check fires when it reaches 0, then resets to `intervalSessions` |
 | `lastUpdateCheck` | ISO 8601 | When the update-check hook last ran |
 | `installedPlugins` | object | Keyed by `author/plugin-name`, tracks version state |
 | `nudgeConfig.intervalSessions` | number | How many sessions between update checks (default: 10, used by the hook) |

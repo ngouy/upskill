@@ -351,6 +351,7 @@ All persistent state lives at `~/.claude/upskill-state.json`. Created automatica
 ```json
 {
   "version": "1",
+  "sessionsUntilNextNudge": 10,
   "lastUpdateCheck": "2026-01-15T10:30:00Z",
   "installedPlugins": {
     "ngouy/upskill": {
@@ -368,6 +369,7 @@ All persistent state lives at `~/.claude/upskill-state.json`. Created automatica
 
 | Field | Description |
 |---|---|
+| `sessionsUntilNextNudge` | Decremented by the hook each session; fires update check at 0, resets to `intervalSessions` |
 | `lastUpdateCheck` | ISO 8601 timestamp of last update check (written by the hook) |
 | `installedPlugins` | Per-plugin version tracking, keyed by `author/plugin-name` |
 | `nudgeConfig.intervalSessions` | Sessions between update checks (default: 10, used by the hook) |
