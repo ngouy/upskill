@@ -76,10 +76,10 @@ The `description` field is the most important field. It must precisely cover the
 
 | Sub-skill | Owns | Never touches |
 |---|---|---|
-| manager | Installed plugins, version metadata | Skill content, session behavior |
+| manager | Unified skill inventory, bulk updates, update nudge hook | Skill content, per-skill quality, security analysis |
 | publisher | Plugin structure, git/GitHub state | Skill quality, session impact |
-| doctor | Skill file content, structure, safety | Session state, code, conversation |
-| auditor | Loaded skills + session impact | Conversation, code, project files |
+| doctor | Individual skill quality, structure, safety (curator + guardian) | Cross-skill analysis, session state, code, conversation |
+| auditor | Cross-skill analysis: conflicts, overlaps, token budget | Per-skill quality checks (use doctor), conversation, code, project files |
 
 When in doubt about scope, check this table. If a feature crosses a boundary, raise it — don't implement it silently.
 

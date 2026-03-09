@@ -63,6 +63,14 @@ The Claude Code skill ecosystem today has a clean 0→1 story (skill-creator) an
 - It is not a Claude Code fork or modification. It extends Claude Code via the standard plugin API.
 - It is not opinionated about what your skills *do* — only about their structure, safety, and impact.
 
+### Key Concepts: Plugin vs. Skill
+
+A **plugin** is a package — a repository with `.claude-plugin/plugin.json` that can be installed via `/plugin install`. A **skill** is a single SKILL.md file inside a plugin's `skills/` directory. One plugin can contain many skills (e.g., `upskill` is one plugin containing four skills).
+
+Users can also have **standalone local skills** — raw `.md` files placed directly in `~/.claude/skills/` or a project's `.claude/skills/`. These are not part of any plugin. They have no version, no metadata, no update path, and no install/uninstall mechanism.
+
+This distinction matters because `/plugin list` shows plugins, but there is no built-in way to see "every skill loaded in this session, regardless of source." `upskill` bridges this gap.
+
 ### Relationship to skill-creator
 
 ```
@@ -77,8 +85,8 @@ No lifecycle          Full lifecycle
 `upskill` and skill-creator are natural partners. A recommended workflow:
 
 ```
-skill-creator  →  publisher  →  doctor  →  manager
- (create it)       (ship it)    (improve it)  (maintain it)
+skill-creator  →  publisher  →  doctor  →  auditor
+ (create it)       (ship it)    (improve it)  (check session health)
 ```
 
 ---
@@ -172,9 +180,9 @@ Each sub-skill section below is written to serve as the primary reference for th
 
 #### Purpose
 
-`manager` provides a single, unified view of every skill loaded into the current Claude Code environment — regardless of whether it came from a plugin or was created locally. It also handles install/remove/update operations and delivers periodic update nudges.
+`manager` provides a single, unified view of every skill loaded into the current Claude Code environment — regardless of whether it came from a plugin or was created locally.
 
-The bifurcation between plugin-installed skills and local custom skills is an implementation detail. From the user's perspective, there is one inventory.
+There is no built-in way to see all skills from all sources in one place. `/plugin list` shows plugins but not standalone local skills. `manager` merges both into one inventory. The bifurcation between plugin-installed skills and local custom skills is an implementation detail — from the user's perspective, there is one list.
 
 #### Capability Set
 
@@ -206,65 +214,49 @@ Metadata shown per skill:
 - Last updated: human-readable relative time
 - Update available badge (when detected)
 
-**2. Install**
+For local `(untracked)` skills, manager surfaces that they have no version history — this is a natural prompt toward `publisher` for users who want to share or version their skills.
 
-Wraps `/plugin install` with a cleaner interface and post-install feedback:
+**2. Bulk Operations**
 
-```
-manager install github:author/plugin-name
-```
+Manager adds value over raw `/plugin` commands by orchestrating multi-plugin operations and providing consolidated feedback:
 
-After install: confirms what was added, lists newly available skills, and offers to run `doctor` on the newly installed plugin.
+- **Update all:** "Update all my skills" — runs updates across all installed plugins in one pass, shows a consolidated summary of what changed (including RELEASE-NOTES.md diffs where available)
+- **Post-install nudge:** After any install, offer to run `doctor` on the newly installed plugin — this is the security gate moment. User can decline.
 
-**3. Remove**
+Manager does not wrap individual `/plugin install` or `/plugin remove` — those work fine as-is. Manager's value is in the operations that span multiple plugins and the post-action intelligence (summaries, doctor suggestions) that the built-in commands don't provide.
 
-Wraps `/plugin remove` with a confirmation step:
+**3. Periodic Update Nudge (via Claude Code hook)**
 
-```
-manager remove plugin-name
-```
+Manager can help the user set up a Claude Code hook that checks for plugin updates at session start. The hook runs outside of the skill system and feeds its output back into the session.
 
-Always prompts for confirmation before removing. Never silently removes anything.
-
-**4. Update**
-
-Wraps `/plugin update` with change summary:
+When updates are available, the hook surfaces a brief, non-blocking message:
 
 ```
-manager update           # update all
-manager update plugin-name  # update one
+[upskill] 2 skill updates available. Ask manager to review.
 ```
 
-After update: shows what changed (if RELEASE-NOTES.md is available in the plugin).
+**Implementation:** The skill does not run at session start automatically — skills are passive instructions, not code. Instead, manager offers to install a Claude Code hook (`~/.claude/hooks/`) that performs the update check. The hook reads `~/.claude/upskill-state.json` to determine when to check and what to report.
 
-**5. Periodic Update Nudge**
+- Hook setup is optional and user-initiated ("set up update notifications")
+- The hook respects `nudgeConfig.enabled` and `nudgeConfig.intervalSessions` from the state file
+- Manager explains what the hook does before installing it
 
-Every ~10 sessions (configurable, tracked in `upskill-state.json`), `manager` proactively checks whether any installed plugins have newer versions available and surfaces a brief summary at the start of the session:
-
-```
-[upskill] 2 skill updates available. Run manager to review.
-```
-
-This is the **only** proactive/automatic behavior in all of `upskill`. Everything else is manual and on-demand.
-
-Implementation note: The nudge fires at session start if `sessionsUntilNextNudge` reaches 0. It does not block the session or require action.
+**Note:** Install, remove, and update operations are handled by Claude Code's built-in `/plugin install`, `/plugin remove`, and `/plugin update` commands. Manager does not wrap these — it focuses on the unified inventory view that those commands don't provide.
 
 #### What manager Must Never Do
 
 - Never modify skill files directly (that's doctor's job)
-- Never install without user confirmation for non-trivial plugins
-- Never remove without explicit confirmation
 - Never surface security findings (that's doctor and auditor's job — manager just inventories)
+- Never install hooks without explaining what they do and getting user confirmation
 
 #### When to Use
 
 The implementer should write the SKILL.md `description` frontmatter to cover these situations:
 
 - User wants to see what skills or plugins are installed
-- User wants to install, remove, or update a skill or plugin
 - User asks what's loaded, what version something is, or what's available
-- User asks if any skills need updating
-- Periodic session-start nudge when updates are available (the only proactive trigger)
+- User asks about skill sources (plugin vs. local)
+- User wants to set up or configure update notifications
 
 ---
 
@@ -630,44 +622,55 @@ The implementer should write the SKILL.md `description` frontmatter to cover the
 
 ### upskill/auditor
 
-**The session snapshot analyzer.**
+**The cross-skill session analyzer.**
 
 #### Purpose
 
-`auditor` provides a point-in-time audit of your current Claude Code session through the lens of skills. It answers the question: *"What is the skill layer doing to my session right now?"*
+`auditor` answers one question: *"How are my loaded skills interacting with each other and affecting my session right now?"*
 
-It does not care about code, conversation content, what you're building, or what Claude said. It cares only about:
-1. What skills are loaded
-2. What they're costing (tokens)
-3. Whether they're healthy (pass/fail checks)
-4. Whether they're contributing to or degrading session quality
+It does not analyze individual skill quality (that's doctor's job). It analyzes the **relationships between** loaded skills — conflicts, overlaps, token budget distribution, and overall session health.
+
+#### How It Differs From doctor
+
+This is the most important distinction to get right:
+
+| | doctor | auditor |
+|---|---|---|
+| Scope | One skill at a time | All loaded skills together |
+| Question | "Is this skill well-written and safe?" | "How do my loaded skills interact with each other?" |
+| Finds | Quality issues, bad patterns, security risks in a single skill | Conflicts between skills, overlapping triggers, token bloat across the session |
+| Output | Per-skill findings with fixes | Session-level snapshot with cross-skill analysis |
+
+They are complementary: auditor might say "my-workflow and commit-helper have overlapping triggers" — then you'd run `doctor` on each individually to decide which to narrow.
 
 #### Scope Boundary
 
 **Auditor analyzes:**
-- Loaded skills and plugins
-- Token footprint of each skill
-- Structural and behavioral properties of loaded skills
-- Conflicts between loaded skills and between skills and CLAUDE.md
+- All loaded skills and how they relate to each other
+- Token footprint of each skill and total session cost
+- Cross-skill conflicts (skill A says X, skill B says Y)
+- Skill vs. CLAUDE.md conflicts
+- Trigger overlap (two skills firing on the same context)
 
 **Auditor does NOT analyze:**
+- Individual skill quality (no structural checks, no missing-element checks — that's doctor)
+- Per-skill security patterns (no Guardian-mode checks — that's doctor)
 - The content of your conversation
 - Your codebase or project files
 - Claude's responses or behavior in prior turns
-- Anything outside the skill layer
 
-This boundary is important. Auditor is a focused tool. It is not a general session health checker.
+This boundary is hard and intentional. Auditor is the cross-skill observer. Doctor is the per-skill analyst.
 
 #### Report Structure
 
-Auditor always produces a structured report with four sections:
+Auditor always produces a structured report with three sections:
 
-**Section 1: Loaded Skills Inventory**
+**Section 1: Token Inventory**
 
 ```
 LOADED SKILLS
 ─────────────────────────────────────────────────────────────────────
-Skill                    Source    Tokens (est.)    % of skill budget
+Skill                    Source    Tokens (est.)    % of total
 ─────────────────────────────────────────────────────────────────────
 manager                  plugin    ~180             8%
 publisher                plugin    ~240             11%
@@ -676,61 +679,44 @@ auditor                  plugin    ~310             14%
 commit                   plugin    ~150             7%
 my-custom-workflow       local     ~840             37%
 ─────────────────────────────────────────────────────────────────────
-TOTAL                              ~2,240           —
+TOTAL                              ~2,240
 
-[!] my-custom-workflow is consuming 37% of the skill budget.
+[!] my-custom-workflow is consuming 37% of the skill token budget.
     Consider reviewing it with doctor.
 ```
 
 Token estimates are approximate, derived from character count with a standard heuristic (4 chars ≈ 1 token). Always labeled as estimates.
 
-**Section 2: Hard Checks (Binary Pass/Fail)**
+**Section 2: Cross-Skill Analysis**
+
+This is auditor's unique contribution — analysis that no single-skill tool can provide.
 
 ```
-HARD CHECKS
+CROSS-SKILL ANALYSIS
 ─────────────────────────────────────────────────────────────────────
-[PASS] No malicious patterns detected in any loaded skill
-[PASS] No direct conflicts between loaded skills
-[FAIL] my-custom-workflow conflicts with CLAUDE.md
-       Conflict: CLAUDE.md says "always use TypeScript".
-       my-custom-workflow says "use JavaScript for scripts".
-       This creates ambiguous behavior when writing scripts.
-[PASS] No skills suppressing transparency
-[PASS] No skills overriding system settings
+[CONFLICT] my-custom-workflow ↔ CLAUDE.md
+           CLAUDE.md says "always use TypeScript".
+           my-custom-workflow says "use JavaScript for scripts".
+           This creates ambiguous behavior when writing scripts.
+
+[OVERLAP]  my-custom-workflow ↔ commit
+           Both trigger on "when I am working on code changes".
+           These skills may compete for the same context.
+           Recommendation: Narrow one or both triggers.
+
+[OK]       No circular references detected.
+[OK]       No other cross-skill conflicts found.
 ─────────────────────────────────────────────────────────────────────
-1 failure
+1 conflict, 1 overlap
 ```
 
-Hard check categories:
-- Malicious pattern presence
-- Cross-skill instruction conflicts
-- Skill vs. CLAUDE.md conflicts
-- Transparency suppression patterns
-- System override patterns
-- Circular reference patterns
+Cross-skill check categories:
+- Skill vs. CLAUDE.md instruction conflicts (with specific text quoted from both sides)
+- Skill vs. skill instruction conflicts
+- Trigger overlap (two or more skills with near-identical activation conditions)
+- Circular references (skill A loads skill B which loads skill A)
 
-**Section 3: Soft Checks (Qualitative)**
-
-```
-SOFT CHECKS
-─────────────────────────────────────────────────────────────────────
-[WARN] my-custom-workflow: trigger condition is very broad
-       "whenever I am writing code" matches almost every engineering
-       session. This skill may be firing when it's not needed,
-       consuming context unnecessarily.
-       Recommendation: Narrow the trigger or convert to manual
-       invocation only.
-
-[INFO] commit: no version metadata found
-       This plugin does not include a version in plugin.json.
-       Minor issue, no action required.
-
-[OK]   All other loaded skills pass soft checks.
-─────────────────────────────────────────────────────────────────────
-1 warning, 1 info
-```
-
-**Section 4: Session Health Summary**
+**Section 3: Session Health Summary**
 
 ```
 SESSION HEALTH SUMMARY
@@ -738,43 +724,43 @@ SESSION HEALTH SUMMARY
 Overall rating: NEEDS ATTENTION
 
 What's healthy:
-  - 5 of 6 skills are well-structured and appropriately scoped
-  - No security concerns detected
-  - Total token footprint is within reasonable range
+  - 5 of 6 skills have reasonable token footprints
+  - No circular references detected
 
 What needs attention:
-  - [FAIL] my-custom-workflow conflicts with CLAUDE.md (Section 2)
-  - [WARN] my-custom-workflow trigger is too broad (Section 3)
-  - [WARN] my-custom-workflow consumes 37% of skill budget (Section 1)
+  - [CONFLICT] my-custom-workflow conflicts with CLAUDE.md
+  - [OVERLAP]  my-custom-workflow and commit have overlapping triggers
+  - [WARN]     my-custom-workflow consumes 37% of the skill token budget
 
 Recommended actions (priority order):
-  1. Run doctor my-custom-workflow --curator
-     Resolve the CLAUDE.md conflict and narrow the trigger condition.
-  2. Consider splitting my-custom-workflow into focused sub-skills.
+  1. Run doctor my-custom-workflow to resolve the CLAUDE.md conflict.
+  2. Narrow the trigger on my-custom-workflow or commit to eliminate overlap.
 ─────────────────────────────────────────────────────────────────────
 ```
 
 Overall ratings:
-- `HEALTHY` — all hard checks pass, no significant soft check warnings
-- `NEEDS ATTENTION` — hard check failures or multiple significant soft warnings
-- `CRITICAL` — one or more red-flag security findings
+- `HEALTHY` — no conflicts, no overlaps, token distribution reasonable
+- `NEEDS ATTENTION` — conflicts or overlaps detected, or one skill dominates the token budget
+- `CRITICAL` — CLAUDE.md conflict detected (this directly affects Claude's behavior)
 
 #### What auditor Must Never Do
 
+- Never perform per-skill quality analysis (no structural checks, no missing-element checks — use doctor)
+- Never perform per-skill security analysis (no Guardian-mode checks — use doctor)
 - Never read or reference conversation content
 - Never analyze the user's code, commits, or project state
 - Never modify any skill files
-- Never make security judgments about what bash commands *do at runtime* — only about patterns in skill instructions
 - Never claim certainty about token counts — always label estimates as approximate
+- Never duplicate doctor's work — when a finding requires per-skill analysis, recommend running doctor
 
 #### When to Use
 
 The implementer should write the SKILL.md `description` frontmatter to cover these situations:
 
 - User wants to understand what skills are loaded and their token cost
-- User suspects loaded skills are degrading session quality or consuming too much context
-- User wants a health check or overview of their current skill setup
-- User asks what's conflicting, suspicious, or problematic in the current session
+- User suspects loaded skills are conflicting with each other or with CLAUDE.md
+- User notices overlapping behavior between skills and wants to identify the overlap
+- User wants a session-level health check for their skill setup
 - User asks for a session audit, skill snapshot, or "what's loaded right now"
 
 ---
@@ -788,7 +774,6 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
 ```json
 {
   "version": "1",
-  "sessionsUntilNextNudge": 10,
   "lastUpdateCheck": "2026-01-15T10:30:00Z",
   "installedPlugins": {
     "ngouy/upskill": {
@@ -812,10 +797,9 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
 | Field | Type | Description |
 |---|---|---|
 | `version` | string | Schema version for migration support |
-| `sessionsUntilNextNudge` | number | Decremented each session; nudge fires when it reaches 0, then resets to `intervalSessions` |
-| `lastUpdateCheck` | ISO 8601 | When we last checked for plugin updates |
+| `lastUpdateCheck` | ISO 8601 | When the update-check hook last ran |
 | `installedPlugins` | object | Keyed by `author/plugin-name`, tracks version state |
-| `nudgeConfig.intervalSessions` | number | How many sessions between update nudges (default: 10) |
+| `nudgeConfig.intervalSessions` | number | How many sessions between update checks (default: 10, used by the hook) |
 | `nudgeConfig.enabled` | boolean | User can disable nudges entirely |
 | `watermark.enabled` | boolean | Whether to add upskill attribution to managed skills and published READMEs (default: true) |
 
@@ -824,7 +808,7 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
 - Never commit `upskill-state.json` to any repository
 - Always read before write to avoid clobbering concurrent updates
 - Gracefully handle missing or malformed state files by re-initializing
-- The state file is only updated by `manager` — other sub-skills are read-only on state
+- The state file is written by `manager` and the update-check hook — other sub-skills are read-only on state
 
 ---
 
@@ -890,9 +874,7 @@ This applies to: removing plugins, bumping versions, creating GitHub repos, modi
 
 ### 4. Suggest, Don't Force
 
-`doctor` recommends. `publisher` guides. `manager` nudges. None of them act without user confirmation on anything meaningful. The only autonomous actions in all of `upskill` are:
-- Decrementing the session counter
-- Showing the update nudge message
+`doctor` recommends. `publisher` guides. `manager` nudges. None of them act without user confirmation on anything meaningful. The only autonomous behavior in `upskill` is the optional update-check hook — which the user explicitly installs and can disable at any time.
 
 Everything else requires a human keystroke.
 
@@ -900,13 +882,17 @@ Everything else requires a human keystroke.
 
 `upskill` is a skill about skills. It will be loaded alongside other skills, and its own token footprint must be minimal and appropriate.
 
-Token budget targets (initial estimates — verify during implementation):
-- `manager`: ~300 tokens
-- `publisher`: ~400 tokens
-- `doctor`: ~600 tokens (necessarily larger due to analysis pattern library)
-- `auditor`: ~400 tokens
+**What "token budget" means:** Every SKILL.md is loaded into Claude's context window at the start of every session. The full text — instructions, examples, pattern tables, everything — consumes context whether or not the skill is used in that session. Tokens spent on skill instructions are tokens not available for conversation, code, and tool results. This is the fundamental cost of having a skill installed.
 
-Each skill in `upskill` must pass `auditor --tokens` before release. If budgets need adjusting during implementation, update this document and note the reasoning.
+Token budget targets (aspirational — expect 50-100% overrun during implementation):
+- `manager`: ~300 tokens (~1,200 characters)
+- `publisher`: ~400 tokens (~1,600 characters)
+- `doctor`: ~800 tokens (~3,200 characters) — necessarily larger due to analysis pattern library and dual-mode specification
+- `auditor`: ~400 tokens (~1,600 characters)
+
+These targets are starting points, not hard limits. During implementation, if a skill cannot meet its target without becoming too vague to be useful, the implementer should document the actual size and the reasoning for the overrun. The priority is: useful and precise instructions first, token savings second.
+
+Each skill in `upskill` should be reviewed for token efficiency before release. If budgets need adjusting during implementation, update this document and note the reasoning.
 
 ### 6. upskill Eats Its Own Cooking
 
