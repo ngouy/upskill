@@ -32,11 +32,24 @@
 
 ## Installation
 
+Claude Code uses a marketplace registry model. Register the upskill marketplace, then install:
+
 ```
-/plugin install github:ngouy/upskill
+/plugin marketplace add ngouy/upskill-marketplace
+/plugin install upskill@upskill-marketplace
 ```
 
-That's it. All four sub-skills become available immediately in the current session and in every future session.
+All sub-skills become available immediately in the current session and every future session.
+
+### Manual install (without marketplace)
+
+Clone directly into the plugins directory and restart Claude Code:
+
+```bash
+git clone https://github.com/ngouy/upskill ~/.claude/plugins/ngouy/upskill
+```
+
+> **Note:** The marketplace registry (`ngouy/upskill-marketplace`) must be created and upskill registered in it before the `/plugin install` path works. Until then, use the manual install above.
 
 ---
 
