@@ -804,7 +804,7 @@ All persistent state lives in `~/.claude/upskill-state.json`. This file is creat
     "enabled": true
   },
   "watermark": {
-    "enabled": true
+    "enabled": false
   }
 }
 ```

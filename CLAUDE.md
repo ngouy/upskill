@@ -99,7 +99,7 @@ Before any skill is considered done:
 - [ ] Has a "Must Never Do" list
 - [ ] Token footprint is within budget (see VISION.md Design Principles)
 - [ ] Output format examples are concrete, not abstract
-- [ ] SKILL.md frontmatter includes `maintained-with: upskill (github.com/ngouy/upskill)`
+- [ ] If watermark is opted-in, SKILL.md frontmatter includes `maintained-with: upskill (github.com/ngouy/upskill)`
 
 ## Code Style
 
