@@ -11,16 +11,23 @@ The north star document is `VISION.md`. Read it before implementing anything.
 
 ## Build Roadmap
 
+**v1 focuses on the two highest-value skills: publisher and doctor.** Manager and auditor are deferred to v1.1+.
+
 Sessions must happen in this order. Do not start a session without completing the previous one.
 
 | Session | Task | GitHub Issue | Status |
 |---|---|---|---|
 | 1 | Plugin scaffold — create `plugin.json`, empty `skills/` dirs, `.gitignore` | — | 🔲 todo |
-| 2 | `manager` sub-skill | [#1](https://github.com/ngouy/upskill/issues/1) | 🔲 todo |
-| 3 | `publisher` sub-skill | [#2](https://github.com/ngouy/upskill/issues/2) | 🔲 todo |
-| 4 | `doctor` sub-skill | [#3](https://github.com/ngouy/upskill/issues/3) | 🔲 todo |
-| 5 | `auditor` sub-skill | [#4](https://github.com/ngouy/upskill/issues/4) | 🔲 todo |
-| 6 | Final pass — README update, run doctor on all skills, tag v1.0.0 | — | 🔲 todo |
+| 2 | `publisher` sub-skill | [#2](https://github.com/ngouy/upskill/issues/2) | 🔲 todo |
+| 3 | `doctor` sub-skill | [#3](https://github.com/ngouy/upskill/issues/3) | 🔲 todo |
+| 4 | Final pass — README update, run doctor on all skills, tag v1.0.0 | — | 🔲 todo |
+
+**Deferred to v1.1+:**
+
+| Task | GitHub Issue | Notes |
+|---|---|---|
+| `manager` sub-skill | [#1](https://github.com/ngouy/upskill/issues/1) | Unified inventory, bulk updates, update hook |
+| `auditor` sub-skill | [#4](https://github.com/ngouy/upskill/issues/4) | Cross-skill analysis, conflicts, token budget |
 
 **When starting a session:** read the linked GitHub issue in full before writing a single line. The issue is the brief. VISION.md is the law.
 
@@ -41,7 +48,9 @@ upskill/
 │   └── plugin.json          # Plugin metadata — minimal, no skills array
 ├── skills/
 │   ├── manager/SKILL.md
-│   ├── publisher/SKILL.md
+│   ├── publisher/
+│   │   ├── SKILL.md
+│   │   └── templates/       # Scaffold templates — read on demand, not loaded every session
 │   ├── doctor/SKILL.md
 │   └── auditor/SKILL.md
 ├── CLAUDE.md                # This file
@@ -76,10 +85,10 @@ The `description` field is the most important field. It must precisely cover the
 
 | Sub-skill | Owns | Never touches |
 |---|---|---|
-| manager | Installed plugins, version metadata | Skill content, session behavior |
+| manager | Unified skill inventory, bulk updates, update nudge hook | Skill content, per-skill quality, security analysis |
 | publisher | Plugin structure, git/GitHub state | Skill quality, session impact |
-| doctor | Skill file content, structure, safety | Session state, code, conversation |
-| auditor | Loaded skills + session impact | Conversation, code, project files |
+| doctor | Individual skill quality, structure, safety (curator + guardian) | Cross-skill analysis, session state, code, conversation |
+| auditor | Cross-skill analysis: conflicts, overlaps, token budget | Per-skill quality checks (use doctor), conversation, code, project files |
 
 When in doubt about scope, check this table. If a feature crosses a boundary, raise it — don't implement it silently.
 
@@ -92,7 +101,7 @@ Before any skill is considered done:
 - [ ] Has a "Must Never Do" list
 - [ ] Token footprint is within budget (see VISION.md Design Principles)
 - [ ] Output format examples are concrete, not abstract
-- [ ] SKILL.md frontmatter includes `maintained-with: upskill (github.com/ngouy/upskill)`
+- [ ] If watermark is opted-in, SKILL.md frontmatter includes `maintained-with: upskill (github.com/ngouy/upskill)`
 
 ## Code Style
 
