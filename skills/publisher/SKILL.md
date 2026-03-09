@@ -39,10 +39,10 @@ Ask: "Add to an existing plugin you own, or create a new one?" List only plugins
 Ask visibility (public / private / org). Confirm before acting. Run `gh repo create <name> --[public|private] --source=. --push`. Suggest next step: version bump.
 
 **Version bump:**
-Diff since last tag. Suggest: new capabilities → minor, breaking changes → major, docs/typos → patch. Explain reasoning. User can override. Create branch `upskill/bump-v<new-version>`, update `plugin.json` version, commit `chore: bump version to vX.Y.Z`, push, create PR. Version is finalized on merge.
+Diff since last tag. Suggest: new capabilities → minor, breaking changes → major, docs/typos → patch. Explain reasoning. User can override. Create branch `upskill/bump-v<new-version>`, update `plugin.json` version, prompt user to review/update `RELEASE-NOTES.md`, commit both as `chore: bump version to vX.Y.Z`, push, create PR.
 
 **Release (after version bump PR is merged):**
-Confirm current branch is main and the version bump PR is merged. Prompt user to review/update `RELEASE-NOTES.md`. Confirm, then create git tag `vX.Y.Z` on main, push tag, and run `gh release create`.
+Confirm current branch is main and the version bump PR is merged. Confirm, then create git tag `vX.Y.Z` on main, push tag, and run `gh release create`.
 
 ## Docs & Upgrades
 
