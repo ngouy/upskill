@@ -1,16 +1,5 @@
-# Claude Code
+# Claude Code session data
 .claude/
 
-# OS files
+# OS
 .DS_Store
-Thumbs.db
-
-# Editor files
-*.swp
-*.swo
-*~
-.vscode/
-.idea/
-
-# Node (if applicable)
-node_modules/
