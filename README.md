@@ -58,31 +58,28 @@ git clone https://github.com/ngouy/upskill ~/.claude/plugins/ngouy/upskill
 ## Quick Start
 
 ```
-# See everything installed
-"Show me all my installed skills"
-
 # Publish a skill you just created
 "I just made a new skill, help me put it on GitHub"
 
-# Check a skill for problems
-"Run doctor on my-custom-workflow"
+# Bump the version of an existing plugin
+"publisher: bump version"
 
-# Audit your current session
-"Audit my loaded skills"
+# Release a new version
+"publisher: release"
 ```
 
-Claude activates the appropriate sub-skill automatically based on context, or you can invoke them explicitly by name.
+Claude activates publisher automatically when the context matches, or you can invoke it explicitly by name.
 
 ---
 
 ## Sub-Skills Overview
 
-| Sub-skill | One-line description |
-|---|---|
-| `manager` | Unified inventory of all installed skills (plugins + local), bulk updates, update notifications |
-| `publisher` | Scaffold, version, and ship any skill to GitHub as an installable plugin |
-| `doctor` | Analyze individual skill files for quality, structure, and safety — Curator and Guardian modes |
-| `auditor` | Cross-skill session analysis: conflicts, overlaps, token budget, and session health |
+| Sub-skill | Status | One-line description |
+|---|---|---|
+| `publisher` | ✅ v1 | Scaffold, version, and ship any skill to GitHub as an installable plugin |
+| `doctor` | 🚧 coming in v1 | Analyze individual skill files for quality, structure, and safety — Curator and Guardian modes |
+| `manager` | 🔜 v1.1 | Unified inventory of all installed skills (plugins + local), bulk updates, update notifications |
+| `auditor` | 🔜 v1.1 | Cross-skill session analysis: conflicts, overlaps, token budget, and session health |
 
 ---
 
@@ -90,43 +87,7 @@ Claude activates the appropriate sub-skill automatically based on context, or yo
 
 ### manager — Unified Inventory
 
-`manager` is your single pane of glass for everything installed. It unifies plugin-installed skills (managed by Claude Code) and local custom skills (raw markdown files in `~/.claude/skills/`) into one view. From the user's perspective, there is one inventory — not two.
-
-#### List All Installed Skills
-
-Ask: *"What skills do I have installed?"* or *"Show me my skill inventory."*
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ INSTALLED SKILLS                                          2 plugins  │
-├──────────────────────┬────────────┬────────────┬───────────────────┤
-│ Skill                │ Source     │ Version    │ Last Updated       │
-├──────────────────────┼────────────┼────────────┼───────────────────┤
-│ manager              │ plugin     │ 1.2.0      │ 3 days ago         │
-│ publisher            │ plugin     │ 1.2.0      │ 3 days ago         │
-│ doctor               │ plugin     │ 1.2.0      │ 3 days ago         │
-│ auditor              │ plugin     │ 1.2.0      │ 3 days ago         │
-│ my-custom-workflow   │ local      │ (untracked)│ 12 days ago        │
-│ commit               │ plugin     │ 2.0.1      │ 1 week ago         │
-└──────────────────────┴────────────┴────────────┴───────────────────┘
-
-[!] 1 update available: commit (2.0.1 → 2.1.0)
-```
-
-Local skills without git history show version as `(untracked)`. Skills in a git repo show the short SHA.
-
-#### Bulk Updates
-
-```
-# Update all plugins in one pass
-"Update all my skills"
-```
-
-Manager runs updates across all installed plugins and shows a consolidated summary of what changed, including RELEASE-NOTES.md diffs where available. Individual install/remove operations use Claude Code's built-in `/plugin install` and `/plugin remove` directly.
-
-#### Update Notifications
-
-Manager can help set up a Claude Code hook that checks for updates at session start. This is optional and user-initiated — ask *"Set up update notifications"* to get started.
+> 🔜 **Coming in v1.1.** See [issue #1](https://github.com/ngouy/upskill/issues/1) for the design.
 
 ---
 
@@ -200,18 +161,11 @@ raw .md file
 
 ### doctor — Quality and Safety Analysis
 
-`doctor` analyzes skill files for quality, structure, safety, and behavioral correctness. It operates in two modes: **Curator** for skills you own, and **Guardian** for third-party skills you're evaluating.
+> 🚧 **In progress — coming in v1.** See [issue #3](https://github.com/ngouy/upskill/issues/3) for the design.
 
-The name is intentional: a doctor diagnoses, treats, prescribes, and discharges. doctor does the same for skills — it finds what's wrong, recommends a fix, applies it with your approval, and clears the skill. *The doctor will see your skill now.*
-
-Doctor never modifies skill files without explicit approval for each change. It recommends — it does not act unilaterally.
+Doctor will analyze skill files for quality, structure, safety, and behavioral correctness in two modes: **Curator** (your own skills) and **Guardian** (third-party skills). Doctor never modifies skill files without explicit approval.
 
 #### Curator Mode — Improve Your Own Skills
-
-```
-"Run doctor on my-custom-workflow"
-"Check the quality of my commit skill"
-```
 
 Curator analyzes for:
 - Clear purpose statement and scope
@@ -287,49 +241,7 @@ Severity levels: `CRITICAL` / `HIGH` / `MEDIUM` / `LOW` for Curator mode. `RED F
 
 ### auditor — Cross-Skill Session Analysis
 
-`auditor` analyzes how your loaded skills interact with each other and affect your session. It answers: *"How are my skills working together right now?"*
-
-Auditor focuses on **cross-skill** analysis — conflicts, overlaps, and token budget distribution. It does not duplicate doctor's per-skill quality checks. It does not read your conversation, codebase, or project files.
-
-#### Run an Audit
-
-```
-"Audit my session"
-"What are my loaded skills costing me in tokens?"
-"Are any of my skills conflicting with each other?"
-```
-
-#### Report Structure
-
-**1. Token Inventory** — all loaded skills with estimated token cost:
-
-```
-LOADED SKILLS
-─────────────────────────────────────────────────────────────────────
-Skill                    Source    Tokens (est.)    % of total
-─────────────────────────────────────────────────────────────────────
-manager                  plugin    ~180             8%
-doctor                   plugin    ~520             23%
-my-custom-workflow       local     ~840             37%
-...
-─────────────────────────────────────────────────────────────────────
-TOTAL                              ~2,240
-```
-
-**2. Cross-Skill Analysis** — conflicts between skills, overlapping triggers, CLAUDE.md contradictions:
-
-```
-[CONFLICT] my-custom-workflow ↔ CLAUDE.md
-           CLAUDE.md says "always use TypeScript".
-           my-custom-workflow says "use JavaScript for scripts".
-
-[OVERLAP]  my-custom-workflow ↔ commit
-           Both trigger on "when I am working on code changes".
-```
-
-**3. Session Health Summary** — overall rating with prioritized actions.
-
-Overall ratings: `HEALTHY` / `NEEDS ATTENTION` / `CRITICAL`.
+> 🔜 **Coming in v1.1.** See [issue #4](https://github.com/ngouy/upskill/issues/4) for the design.
 
 ---
 
