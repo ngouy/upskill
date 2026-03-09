@@ -48,7 +48,9 @@ upskill/
 │   └── plugin.json          # Plugin metadata — minimal, no skills array
 ├── skills/
 │   ├── manager/SKILL.md
-│   ├── publisher/SKILL.md
+│   ├── publisher/
+│   │   ├── SKILL.md
+│   │   └── templates/       # Scaffold templates — read on demand, not loaded every session
 │   ├── doctor/SKILL.md
 │   └── auditor/SKILL.md
 ├── CLAUDE.md                # This file

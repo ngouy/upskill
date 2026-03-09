@@ -140,7 +140,12 @@ upskill/
 │   ├── manager/
 │   │   └── SKILL.md
 │   ├── publisher/
-│   │   └── SKILL.md
+│   │   ├── SKILL.md
+│   │   └── templates/          ← scaffold templates, read on demand
+│   │       ├── plugin.json.template
+│   │       ├── gitignore.template
+│   │       ├── readme.md.template
+│   │       └── release-notes.md.template
 │   ├── doctor/
 │   │   └── SKILL.md
 │   └── auditor/
@@ -301,25 +306,23 @@ my-plugin/
 └── RELEASE-NOTES.md       ← generated stub for v1.0.0
 ```
 
-`plugin.json` schema generated:
-```json
-{
-  "name": "my-plugin",
-  "version": "1.0.0",
-  "description": "...",
-  "author": {
-    "name": "..."
-  },
-  "homepage": "https://github.com/username/my-plugin",
-  "repository": "https://github.com/username/my-plugin",
-  "license": "MIT",
-  "keywords": []
-}
+**Templates are external files, not embedded in the SKILL.md.** Publisher's SKILL.md contains slim instructions that reference template files stored alongside it in the plugin repo. Claude reads the templates only when publisher is actually invoked — they cost zero tokens in sessions where publisher isn't used.
+
+```
+upskill/
+└── skills/
+    └── publisher/
+        ├── SKILL.md                        ← slim instructions (loaded every session)
+        └── templates/
+            ├── plugin.json.template        ← read on demand
+            ├── gitignore.template
+            ├── readme.md.template
+            └── release-notes.md.template
 ```
 
-Skills are auto-discovered from the `skills/` directory — no `skills` array needed in `plugin.json`.
+The SKILL.md instructs Claude to: read the relevant template, fill in user-provided values (name, description, author), and write the result. Publisher prompts the user for missing fields rather than guessing.
 
-Publisher prompts the user for missing fields (name, description, author) rather than guessing.
+Skills are auto-discovered from the `skills/` directory — no `skills` array needed in `plugin.json`.
 
 **2. Git Initialize**
 
