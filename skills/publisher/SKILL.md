@@ -12,6 +12,8 @@ Run `gh auth status`. If it fails, stop: "Publisher requires `gh` CLI authentica
 
 ## Detect State
 
+If triggered immediately after skill-creator, skip detection and go directly to Scaffold — the skill is known to be raw.
+
 Check in order. Stop at the first "no" — you're at the stage from the previous row. If check 2 fails: raw.
 
 | # | Check | Stage achieved |
